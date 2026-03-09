@@ -275,7 +275,7 @@ function EventDetail({ event, onClose }) {
         </div>
         <div style={{ display: "flex", gap: 6, flexWrap: "wrap" }}>
           {event.substrates.map(s => {
-            const match = PLI_SCORES.find(p => p.sub === s);
+            const match = (scores || PLI_SCORES).find(p => p.sub === s);
             return (
               <div key={s} style={{
                 display: "flex", alignItems: "center", gap: 6,
@@ -347,13 +347,13 @@ function EventDetail({ event, onClose }) {
   );
 }
 
-function ScoreTable({ events }) {
+function ScoreTable({ events, scores }) {
   // Calculate dynamic adjustments from events
   const adjustments = {};
   events.forEach(e => {
     if (e.score_impact !== 0) {
       e.substrates.forEach(sub => {
-        const match = PLI_SCORES.find(p => p.sub === sub);
+        const match = (scores || PLI_SCORES).find(p => p.sub === sub);
         if (match) adjustments[sub] = (adjustments[sub] || 0) + e.score_impact * 0.4;
       });
     }
@@ -364,7 +364,7 @@ function ScoreTable({ events }) {
       <div style={{ fontSize: 9, color: C.gold, fontFamily: "monospace", letterSpacing: 1.5, marginBottom: 12 }}>
         PLI SCORE™ — ATUALIZADO COM EVENTOS RECENTES
       </div>
-      {PLI_SCORES.map(({ sub, score, band, col, chain }) => {
+      {(scores || PLI_SCORES).map(({ sub, score, band, col, chain }) => {
         const adj = Math.round(adjustments[sub] || 0);
         const liveScore = Math.min(100, score + adj);
         return (
@@ -427,31 +427,89 @@ function ApiStatus() {
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function PLIMonitor() {
+
+// ── MAIN APP ──────────────────────────────────────────────────────────────────
+export default function PLIMonitor() {
   const [activeTab, setActiveTab] = useState("feed");
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [chainFilter, setChainFilter] = useState("all");
   const [urgencyFilter, setUrgencyFilter] = useState("all");
-  const [events, setEvents] = useState(LIVE_EVENTS_SEED);
+  const [events, setEvents] = useState([]);
+  const [pliScores, setPliScores] = useState(PLI_SCORES);
   const [lastUpdate, setLastUpdate] = useState(new Date());
+  const [loading, setLoading] = useState(true);
   const [newEventAlert, setNewEventAlert] = useState(false);
-  const [ticker, setTicker] = useState(0);
 
-  // Simulate live polling (in prod: setInterval → fetch API Câmara)
-  useEffect(() => {
-    const interval = setInterval(() => {
-      setTicker(t => t + 1);
+  // Map DB band to color
+  function bandColor(band) {
+    if (band === "CRÍTICA") return C.red;
+    if (band === "MONITORAMENTO") return C.amber;
+    return C.green;
+  }
+
+  // Fetch events and scores from real API
+  async function loadData() {
+    try {
+      const [evRes, scRes] = await Promise.all([
+        fetch("/api/events?limit=50"),
+        fetch("/api/scores"),
+      ]);
+      const evData = await evRes.json();
+      const scData = await scRes.json();
+
+      if (evData.events && evData.events.length > 0) {
+        // Normalize DB format to component format
+        const normalized = evData.events.map(e => ({
+          id: e.external_id || e.id,
+          type: e.type || "PL",
+          urgency: e.urgency || "MONITORAMENTO",
+          chain: e.chain || "plastic",
+          score_impact: e.score_impact || 0,
+          title: e.title || "",
+          body: e.body || "",
+          status: e.status || "",
+          last_move: e.last_move || "",
+          players: e.players || [],
+          substrates: e.substrates || [],
+          date: e.event_date || "",
+          source: e.source || "",
+          source_url: e.source_url || "",
+          details: e.details || "",
+          vote_status: null,
+        }));
+        setEvents(normalized);
+        setNewEventAlert(true);
+        setTimeout(() => setNewEventAlert(false), 4000);
+      } else {
+        // Fallback to seed if no real data yet
+        setEvents(LIVE_EVENTS_SEED);
+      }
+
+      if (scData.scores && scData.scores.length > 0) {
+        const normalized = scData.scores.map(s => ({
+          sub: s.substrate,
+          score: s.score,
+          band: s.band,
+          col: bandColor(s.band),
+          chain: s.chain,
+        }));
+        setPliScores(normalized);
+      }
+
       setLastUpdate(new Date());
-    }, 30000);
-    return () => clearInterval(interval);
-  }, []);
+    } catch (err) {
+      console.error("[PLIMonitor] fetch error:", err);
+      setEvents(LIVE_EVENTS_SEED);
+    } finally {
+      setLoading(false);
+    }
+  }
 
-  // Simulate a new event arriving
   useEffect(() => {
-    const timeout = setTimeout(() => {
-      setNewEventAlert(true);
-      setTimeout(() => setNewEventAlert(false), 4000);
-    }, 8000);
-    return () => clearTimeout(timeout);
+    loadData();
+    // Poll every 5 minutes
+    const interval = setInterval(loadData, 300000);
+    return () => clearInterval(interval);
   }, []);
 
   const filtered = events.filter(e => {
@@ -643,7 +701,7 @@ export default function PLIMonitor() {
             <div style={{ background: C.dark, border: `1px solid ${C.gold}33`, borderRadius: 6, padding: "10px 14px", marginBottom: 16, fontSize: 11, color: "#8AABCC" }}>
               Os scores abaixo refletem o PLI Score™ base (edição inaugural) ajustado pelos eventos regulatórios detectados. Em produção, ajuste é calculado automaticamente via D1–D5 a cada nova regulação capturada.
             </div>
-            <ScoreTable events={events} />
+            <ScoreTable events={events} scores={pliScores} />
           </div>
         )}
 
