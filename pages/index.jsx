@@ -431,6 +431,7 @@ function ApiStatus() {
 export default function PLIMonitor() {
   const [activeTab, setActiveTab] = useState("feed");
   const [events, setEvents] = useState([]);
+  const [selectedEvent, setSelectedEvent] = useState(null);
   const [chainFilter, setChainFilter] = useState("all");
   const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [pliScores, setPliScores] = useState(PLI_SCORES);
