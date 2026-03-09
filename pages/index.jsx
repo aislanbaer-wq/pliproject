@@ -505,11 +505,14 @@ export default function PLIMonitor() {
     }
   }
 
-  useEffect(() => {
-    loadData();
-    // Poll every 5 minutes
-    const interval = setInterval(loadData, 300000);
-    return () => clearInterval(interval);
+ useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      if (!cancelled) await loadData();
+    }
+    load();
+    const interval = setInterval(load, 300000);
+    return () => { cancelled = true; clearInterval(interval); };
   }, []);
 
   const filtered = events.filter(e => {
