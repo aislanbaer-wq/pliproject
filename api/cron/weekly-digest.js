@@ -1,3 +1,55 @@
+// api/cron/weekly-digest.js
+import { fetchAllSources, getLastWeekISO } from '../../lib/fetchers.js';
+import { classifyEvent } from '../../lib/classifyEvent.js';
+import { supabaseAdmin } from '../../lib/supabase.js';
+
+const SCORE_BASELINES = {
+  'PFAS food contact': 88, 'Filmes multicamada': 79, 'EPS': 76,
+  'PVC embalagem': 72,     'PE filme mono': 54,       'Papel/cartão FSC': 42,
+  'PET garrafa': 38,       'OPP mono': 35,            'Papelão ondulado': 28,
+  'Bio-based PE': 22,
+};
+const SUBSTRATE_CHAIN = {
+  'PFAS food contact': 'plastic', 'Filmes multicamada': 'plastic',
+  'EPS': 'plastic', 'PVC embalagem': 'plastic', 'PE filme mono': 'plastic',
+  'OPP mono': 'plastic', 'Bio-based PE': 'plastic',
+  'Papel/cartão FSC': 'paper', 'Papelão ondulado': 'paper',
+  'PET garrafa': 'recycl',
+};
+
+function getBand(s) { return s >= 70 ? 'CRÍTICA' : s >= 40 ? 'MONITORAMENTO' : 'ESTÁVEL'; }
+
+async function recalculateScores() {
+  const { data: events } = await supabaseAdmin
+    .from('events').select('substrates, score_impact, urgency')
+    .eq('active', true).in('urgency', ['CRÍTICO', 'MONITORAMENTO', 'EM VIGOR']);
+
+  const delta = {};
+  for (const ev of (events || [])) {
+    for (const sub of (ev.substrates || [])) {
+      delta[sub] = (delta[sub] || 0) + Math.round((ev.score_impact || 0) * 0.4);
+    }
+  }
+  const today = new Date().toISOString().split('T')[0];
+  const snapshots = Object.entries(SCORE_BASELINES).map(([sub, base]) => {
+    const score = Math.min(100, Math.max(0, base + (delta[sub] || 0)));
+    return { substrate: sub, chain: SUBSTRATE_CHAIN[sub], score, score_base: base,
+             score_delta: delta[sub] || 0, band: getBand(score), snapshot_date: today };
+  });
+  await supabaseAdmin.from('pli_scores')
+    .upsert(snapshots, { onConflict: 'substrate,snapshot_date' });
+  return snapshots;
+}
+
+export default async function handler(req, res) {
+  const auth = req.headers.authorization;
+  const querySecret = req.query.secret;
+  if (auth !== `Bearer ${process.env.CRON_SECRET}` && querySecret !== process.env.CRON_SECRET) {
+    return res.status(401).json({ error: 'Unauthorized' });
+  }
+
+  const since = getLastWeekISO();
+  let fetched = 0, inserted = 0;
 
   try {
     const raw = await fetchAllSources(since);
