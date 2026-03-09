@@ -426,14 +426,13 @@ function ApiStatus() {
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
-
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function PLIMonitor() {
   const [activeTab, setActiveTab] = useState("feed");
-  const [events, setEvents] = useState([]);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [chainFilter, setChainFilter] = useState("all");
   const [urgencyFilter, setUrgencyFilter] = useState("all");
+  const [events, setEvents] = useState([]);
   const [pliScores, setPliScores] = useState(PLI_SCORES);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [loading, setLoading] = useState(true);
@@ -504,14 +503,11 @@ export default function PLIMonitor() {
     }
   }
 
- useEffect(() => {
-    let cancelled = false;
-    async function load() {
-      if (!cancelled) await loadData();
-    }
-    load();
-    const interval = setInterval(load, 300000);
-    return () => { cancelled = true; clearInterval(interval); };
+  useEffect(() => {
+    loadData();
+    // Poll every 5 minutes
+    const interval = setInterval(loadData, 300000);
+    return () => clearInterval(interval);
   }, []);
 
   const filtered = events.filter(e => {
