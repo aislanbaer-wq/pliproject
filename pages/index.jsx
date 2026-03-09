@@ -433,7 +433,6 @@ export default function PLIMonitor() {
   const [events, setEvents] = useState([]);
   const [chainFilter, setChainFilter] = useState("all");
   const [urgencyFilter, setUrgencyFilter] = useState("all");
-  const [events, setEvents] = useState([]);
   const [pliScores, setPliScores] = useState(PLI_SCORES);
   const [lastUpdate, setLastUpdate] = useState(new Date());
   const [loading, setLoading] = useState(true);
