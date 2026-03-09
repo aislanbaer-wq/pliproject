@@ -10,7 +10,9 @@ export default async function handler(req, res) {
     return res.status(401).json({ error: 'Unauthorized' });
   }
 
-  const since = getLastWeekISO();
+  const d = new Date();
+d.setDate(d.getDate() - 30);
+const since = d.toISOString().split('T')[0];
   try {
     const results = await fetchAllSources(since);
     return res.status(200).json({
