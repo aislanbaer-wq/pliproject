@@ -1,4 +1,4 @@
-const { supabaseAdmin } = require('../lib/supabase');
+const { supabaseAdmin } = require('../../lib/supabase');
 
 module.exports = async function handler(req, res) {
   res.setHeader('Cache-Control', 's-maxage=3600, stale-while-revalidate');
