@@ -1,4 +1,4 @@
-# PLI™ Monitor — Deploy Guide
+# PLI™ Monitor — Deploy Guide 
 **ProjetoPack & Associados — Packaging Lobby Intelligence** 
 
 > Monitoramento semanal automatizado de atividade regulatória nas cadeias de embalagem brasileiras.
