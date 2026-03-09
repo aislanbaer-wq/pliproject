@@ -431,7 +431,7 @@ export default function PLIMonitor() {
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function PLIMonitor() {
   const [activeTab, setActiveTab] = useState("feed");
-  const [selectedEvent, setSelectedEvent] = useState(null);
+  const [events, setEvents] = useState([]);
   const [chainFilter, setChainFilter] = useState("all");
   const [urgencyFilter, setUrgencyFilter] = useState("all");
   const [events, setEvents] = useState([]);
