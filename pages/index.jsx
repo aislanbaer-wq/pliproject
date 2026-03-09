@@ -426,7 +426,6 @@ function ApiStatus() {
 }
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
-export default function PLIMonitor() {
 
 // ── MAIN APP ──────────────────────────────────────────────────────────────────
 export default function PLIMonitor() {
